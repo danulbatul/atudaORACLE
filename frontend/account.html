@@ -140,8 +140,13 @@
             window.location.href = '/index.html';
         }
 
-        // Determine API base URL
-        const API_BASE = 'http://129.159.148.255';
+        // Determine API base URL (defaults to deployed instance IP; adjust host/port as needed)
+        const BACKEND_HOST = '129.159.148.255';
+        const BACKEND_PORT = 8080;
+        const API_BASE = (() => {
+            const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+            return `${protocol}//${BACKEND_HOST}:${BACKEND_PORT}`;
+        })();
 
         function getApiBaseUrl() {
             return API_BASE;

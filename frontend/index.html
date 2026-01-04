@@ -264,7 +264,6 @@
 
 <script>
     // Game constants
-    const WS_URL = `ws://${window.location.hostname}:8080`;
     const ROUND_DURATION = 10000; // 10 seconds
     const SYNC_ERROR_THRESHOLD = 30; // pixels - increased to reduce stuttering
     const INTERPOLATION_TIME = 300; // ms - slightly longer for smoother correction
@@ -295,8 +294,14 @@
     const roundTimer = document.getElementById('roundTimer');
     const connectionStatus = document.getElementById('connectionStatus');
 
-    // Backend endpoint base
-    const API_BASE = 'http://129.159.148.255';
+    // Backend endpoint base (defaults to deployed instance IP; adjust host/port below if needed)
+    const BACKEND_HOST = '129.159.148.255';
+    const BACKEND_PORT = 8080;
+    const API_BASE = (() => {
+        // Always use the known backend IP unless you manually change BACKEND_HOST/BACKEND_PORT
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${BACKEND_HOST}:${BACKEND_PORT}`;
+    })();
 
     // Generate or retrieve UUID
     function getOrCreateUUID() {
@@ -953,9 +958,10 @@
         
         // Use same protocol as page, but default to ws://localhost:8080 for development/file usage
         function getWsUrl() {
-            const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
-            const host = API_BASE.replace(/^https?:\/\//, '');
-            return `${wsProtocol}//${host}:8080`;
+            const apiUrl = new URL(getApiBaseUrl());
+            const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+            const port = apiUrl.port ? `:${apiUrl.port}` : '';
+            return `${wsProtocol}//${apiUrl.hostname}${port}`;
         }
 
         const wsUrl = getWsUrl();
