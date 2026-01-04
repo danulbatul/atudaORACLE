@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+backend/users.db
+backend/uploads/
+backend/node_modules/
+*.db-journal
+

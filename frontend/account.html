@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Account</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .account-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            text-align: center;
+            color: #333;
+        }
+
+        .user-info {
+            margin-bottom: 30px;
+        }
+
+        .user-info p {
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .user-info strong {
+            color: #333;
+        }
+
+        .profile-image {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            margin: 20px auto;
+            border: 4px solid #667eea;
+        }
+
+        .upload-section {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .upload-section input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .upload-section button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .upload-section button:hover {
+            background: #45a049;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .back-button:hover {
+            background: #5568d3;
+        }
+
+        .error {
+            color: red;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success {
+            color: green;
+            margin: 10px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="account-container">
+        <h1>My Account</h1>
+        <div id="userInfo" class="user-info">
+            <p>Loading...</p>
+        </div>
+        <img id="profileImage" class="profile-image" src="" alt="Profile Image" style="display: none;">
+        
+        <div class="upload-section">
+            <h3>Change Profile Picture</h3>
+            <input type="file" id="imageFile" accept="image/*">
+            <button onclick="updateImage()">Update Image</button>
+            <div id="message"></div>
+        </div>
+
+        <a href="/index.html" class="back-button">Back to Game</a>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('gameToken');
+        
+        if (!token) {
+            window.location.href = '/index.html';
+        }
+
+        // Determine API base URL
+        function getApiBaseUrl() {
+            if (
+                window.location.protocol === 'file:' ||
+                window.location.hostname === '' ||
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1'
+            ) {
+                return 'http://localhost:8080';
+            }
+            return window.location.origin;
+        }
+
+        function resolveImageUrl(src) {
+            if (!src) return '';
+            if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
+                return src;
+            }
+            if (src.startsWith('/')) {
+                return `${apiBaseUrl}${src}`;
+            }
+            return src;
+        }
+
+        const apiBaseUrl = getApiBaseUrl();
+
+        // Load user info
+        fetch(`${apiBaseUrl}/api/user?token=${token}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Failed to load user info');
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('userInfo').innerHTML = `<p class="error">${data.error}</p>`;
+                    if (data.error === 'User not found') {
+                        localStorage.removeItem('gameToken');
+                        setTimeout(() => window.location.href = '/index.html', 2000);
+                    }
+                } else {
+                    document.getElementById('userInfo').innerHTML = `
+                        <p><strong>Username:</strong> ${data.username}</p>
+                        <p><strong>User ID:</strong> ${data.id}</p>
+                    `;
+                    if (data.image_path) {
+                        const img = document.getElementById('profileImage');
+                        img.src = resolveImageUrl(data.image_path);
+                        img.style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('userInfo').innerHTML = '<p class="error">Error loading user info</p>';
+            });
+
+        function updateImage() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showMessage('Please select an image file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('token', token);
+
+            fetch(`${apiBaseUrl}/api/update-image`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Image updated successfully!', 'success');
+                    const img = document.getElementById('profileImage');
+                    img.src = resolveImageUrl(data.imagePath);
+                    img.style.display = 'block';
+                    fileInput.value = '';
+                } else {
+                    showMessage(data.error || 'Failed to update image', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('An error occurred. Please try again.', 'error');
+            });
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = type;
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+

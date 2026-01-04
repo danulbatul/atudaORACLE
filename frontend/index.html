@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <audio id="cheerSound" src="./cheering.mp3"></audio>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.3.1"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* prevent pinch-zoom */
+        }
+
+        .card {
+            position: fixed;
+            width: 200px;
+            height: 260px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            will-change: transform;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
+            z-index: 1;
+        }
+
+        .card.my-card {
+            z-index: 100;
+        }
+
+        .card.inactive {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+        }
+
+        .card h3 {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: 15px;
+            font-family: system-ui, sans-serif;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+            border-radius: inherit;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        }
+
+        .corner-hit-count {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            font-size: 2rem;
+            z-index: 1000;
+        }
+
+        .modal img {
+            width: 300px;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        .highlight {
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.8);
+        }
+
+        .cps-counter {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: system-ui, sans-serif;
+            font-size: 1.2rem;
+            z-index: 1000;
+        }
+
+        .round-timer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: system-ui, sans-serif;
+            font-size: 1.2rem;
+            z-index: 1000;
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: system-ui, sans-serif;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: rgba(0, 200, 0, 0.8);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(200, 0, 0, 0.8);
+        }
+
+        .registration-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .registration-modal.hidden {
+            display: none;
+        }
+
+        .registration-form {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .registration-form h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #333;
+        }
+
+        .registration-form input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .registration-form input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .registration-form button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .registration-form button:hover {
+            background: #45a049;
+        }
+
+        .registration-form .switch-mode {
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+        }
+
+        .registration-form .switch-mode a {
+            color: #4CAF50;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .account-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: system-ui, sans-serif;
+            font-size: 0.9rem;
+            z-index: 1000;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .account-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="registration-modal" id="registrationModal">
+        <div class="registration-form">
+            <h2 id="modalTitle">Register</h2>
+            <form id="authForm">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <input type="file" id="imageFile" accept="image/*" style="margin: 10px 0;">
+                <button type="submit" id="submitBtn">Register</button>
+            </form>
+            <div class="switch-mode">
+                <span id="switchText">Already have an account? </span>
+                <a id="switchLink" onclick="switchMode()">Login</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="cps-counter" id="cpsCounter">Clicks: 0</div>
+    <div class="round-timer" id="roundTimer">Round: 0.0s</div>
+    <div class="connection-status disconnected" id="connectionStatus">Connecting...</div>
+    <a href="./account.html" class="account-button">My Account</a>
+
+<script>
+    // Game constants
+    const WS_URL = `ws://${window.location.hostname}:8080`;
+    const ROUND_DURATION = 10000; // 10 seconds
+    const SYNC_ERROR_THRESHOLD = 30; // pixels - increased to reduce stuttering
+    const INTERPOLATION_TIME = 300; // ms - slightly longer for smoother correction
+    
+    // Debug mode
+    const DEBUG_MODE = true; // Set to false to disable debug logs
+
+    // Game state
+    let ws = null;
+    let token = null;
+    let myCardId = null;
+    let cards = new Map(); // id -> Card
+    let containerWidth = window.innerWidth;
+    let containerHeight = window.innerHeight;
+    let lastFrameTime = performance.now();
+    let animationFrame = null;
+    let wasTabActive = true;
+    let isLoginMode = false;
+
+    // CPS system
+    let roundClicks = 0;
+    let roundStartTime = 0;
+    let roundNumber = 0;
+    let roundTimerInterval = null;
+
+    // UI elements
+    const cpsCounter = document.getElementById('cpsCounter');
+    const roundTimer = document.getElementById('roundTimer');
+    const connectionStatus = document.getElementById('connectionStatus');
+
+    // Generate or retrieve UUID
+    function getOrCreateUUID() {
+        let uuid = localStorage.getItem('gameToken');
+        return uuid;
+    }
+
+    // Simple debounce helper
+    function debounce(fn, delay) {
+        let timer = null;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
+
+    // Normalize image URLs to point at the backend when using /uploads paths
+    function resolveImageUrl(src) {
+        if (!src) return './default.jpeg';
+        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
+            return src;
+        }
+        if (src.startsWith('/')) {
+            return `${getApiBaseUrl()}${src}`;
+        }
+        return src;
+    }
+
+    // Resolve API base URL based on how the page is opened
+    function getApiBaseUrl() {
+        if (
+            window.location.protocol === 'file:' ||
+            window.location.hostname === '' ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'
+        ) {
+            return 'http://localhost:8080';
+        }
+        return window.location.origin;
+    }
+
+    // Registration/Login functions
+    function switchMode() {
+        isLoginMode = !isLoginMode;
+        const modalTitle = document.getElementById('modalTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const switchText = document.getElementById('switchText');
+        const switchLink = document.getElementById('switchLink');
+        const imageFile = document.getElementById('imageFile');
+
+        if (isLoginMode) {
+            modalTitle.textContent = 'Login';
+            submitBtn.textContent = 'Login';
+            switchText.textContent = "Don't have an account? ";
+            switchLink.textContent = 'Register';
+            imageFile.style.display = 'none';
+        } else {
+            modalTitle.textContent = 'Register';
+            submitBtn.textContent = 'Register';
+            switchText.textContent = 'Already have an account? ';
+            switchLink.textContent = 'Login';
+            imageFile.style.display = 'block';
+        }
+    }
+
+    function showRegistrationModal() {
+        document.getElementById('registrationModal').classList.remove('hidden');
+    }
+
+    function hideRegistrationModal() {
+        document.getElementById('registrationModal').classList.add('hidden');
+    }
+
+    // Handle form submission
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const imageFile = document.getElementById('imageFile').files[0];
+
+        try {
+            const apiBaseUrl = getApiBaseUrl();
+            const endpoint = `${apiBaseUrl}${isLoginMode ? '/api/login' : '/api/register'}`;
+
+            const options = { method: 'POST' };
+            if (isLoginMode) {
+                // Login: send JSON (no file upload)
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify({ username, password });
+            } else {
+                // Registration: send multipart with optional image
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
+                options.body = formData;
+            }
+
+            const response = await fetch(endpoint, options);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `Server error: ${response.status}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.error || errorMessage;
+                } catch (e) {
+                    if (errorText) errorMessage = errorText;
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                localStorage.setItem('gameToken', data.token);
+                token = data.token;
+                hideRegistrationModal();
+                // Connect to game
+                connect();
+            } else {
+                alert(data.error || 'Registration/Login failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(error.message || 'An error occurred. Please make sure the server is running on port 8080.');
+        }
+    });
+
+    // Check if user is logged in on page load
+    (function initAuth() {
+        token = getOrCreateUUID();
+        if (!token) {
+            showRegistrationModal();
+        } else {
+            // Verify token is valid
+            const apiBaseUrl = getApiBaseUrl();
+
+            fetch(`${apiBaseUrl}/api/user?token=${token}`)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Token validation failed');
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        localStorage.removeItem('gameToken');
+                        token = null;
+                        showRegistrationModal();
+                    } else {
+                        hideRegistrationModal();
+                        connect();
+                    }
+                })
+                .catch(() => {
+                    showRegistrationModal();
+                });
+        }
+    })();
+
+    // Card class with dead reckoning
+    class Card {
+        constructor(id, name, imageSrc, x, y, vx, vy, roundNumber, roundStartTime, cornerHits = 0) {
+            this.id = id;
+            this.name = name;
+            this.imageSrc = imageSrc;
+            this.width = 200;
+            this.height = 260;
+            
+            // Dead reckoning state
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.lastUpdateTime = performance.now();
+            this.startX = x;
+            this.startY = y;
+            this.startVx = vx;
+            this.startVy = vy;
+            this.startTime = performance.now();
+            
+            // Sync correction
+            this.targetX = x;
+            this.targetY = y;
+            this.correcting = false;
+            this.correctionStartTime = 0;
+            
+            // Round tracking
+            this.roundNumber = roundNumber || 0;
+            this.roundStartTime = roundStartTime || Date.now();
+            
+            // UI
+            this.cornerHits = cornerHits || 0;
+            this.imageSrc = resolveImageUrl(this.imageSrc);
+            this.element = this.createCardElement();
+            document.body.appendChild(this.element);
+            this.updatePosition();
+        }
+
+        createCardElement() {
+            const card = document.createElement('div');
+            card.className = 'card';
+            if (this.id === myCardId) {
+                card.classList.add('highlight');
+                card.classList.add('my-card');
+            }
+            if (this.inactive) {
+                card.classList.add('inactive');
+            }
+
+            const img = document.createElement('img');
+            img.src = this.imageSrc;
+            img.alt = this.name;
+
+            const title = document.createElement('h3');
+            title.textContent = this.name;
+
+            const counter = document.createElement('span');
+            counter.className = 'corner-hit-count';
+            counter.textContent = `Corners: ${this.cornerHits}`;
+            this.cornerHitCounter = counter;
+
+            card.appendChild(img);
+            card.appendChild(title);
+            card.appendChild(counter);
+
+            // Click handler for my card only
+            if (this.id === myCardId) {
+                card.addEventListener('click', () => {
+                    roundClicks++;
+                    updateCPSDisplay();
+                });
+            }
+
+            return card;
+        }
+
+        // Dead reckoning update
+        update(deltaTime) {
+            // Don't update if card is inactive (frozen)
+            if (this.inactive) {
+                return;
+            }
+            
+            const now = performance.now();
+            const prevX = this.x;
+            const prevY = this.y;
+            
+            // If correcting, interpolate to target smoothly
+            if (this.correcting) {
+                const correctionAge = now - this.correctionStartTime;
+                const t = Math.min(correctionAge / INTERPOLATION_TIME, 1);
+                
+                // Use easing function for smoother interpolation
+                const easedT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                
+                this.x = lerp(this.startX, this.targetX, easedT);
+                this.y = lerp(this.startY, this.targetY, easedT);
+                
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] Card ${this.id} correcting: (${prevX.toFixed(1)}, ${prevY.toFixed(1)}) -> (${this.x.toFixed(1)}, ${this.y.toFixed(1)}), t=${t.toFixed(2)}`);
+                }
+                
+                if (t >= 1) {
+                    this.correcting = false;
+                    // Reset dead reckoning from corrected position
+                    this.startX = this.x;
+                    this.startY = this.y;
+                    this.startVx = this.vx;
+                    this.startVy = this.vy;
+                    this.startTime = now;
+                    if (DEBUG_MODE && this.id === myCardId) {
+                        console.log(`[DEBUG] Card ${this.id} correction complete, reset dead reckoning`);
+                    }
+                }
+            } else {
+                // Normal dead reckoning - smooth continuous movement
+                const elapsed = (now - this.startTime) / 1000;
+                this.x = this.startX + this.startVx * elapsed;
+                this.y = this.startY + this.startVy * elapsed;
+            }
+
+            // Ensure card stays in bounds (clamp position) 
+            const maxX = containerWidth - this.width;
+            const maxY = containerHeight - this.height;
+            
+            // Calculate card edges for proper collision detection
+            const rightEdge = this.x + this.width;
+            const bottomEdge = this.y + this.height;
+            
+            // Clamp position first to prevent going out of bounds
+            if (this.x < 0) this.x = 0;
+            if (this.x > maxX) this.x = maxX;
+            if (this.y < 0) this.y = 0;
+            if (this.y > maxY) this.y = maxY;
+
+            // Collision detection and reflection (client-side)
+            // Only bounce if card's EDGE is at boundary AND moving toward it
+            let hitCorner = false;
+            let bounced = false;
+
+            // Right wall collision - check if RIGHT EDGE hits right wall
+            if (rightEdge >= containerWidth - 0.1 && this.vx > 0) {
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] RIGHT WALL BOUNCE: rightEdge=${rightEdge.toFixed(2)}, containerWidth=${containerWidth.toFixed(2)}, x=${this.x.toFixed(2)}, vx=${this.vx.toFixed(2)}`);
+                }
+                this.x = maxX;
+                this.vx = -this.vx;
+                this.startVx = this.vx;
+                bounced = true;
+            }
+            // Left wall collision - check if LEFT EDGE hits left wall
+            if (this.x <= 0.1 && this.vx < 0) {
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] LEFT WALL BOUNCE: x=${this.x.toFixed(2)}, vx=${this.vx.toFixed(2)}`);
+                }
+                this.x = 0;
+                this.vx = -this.vx;
+                this.startVx = this.vx;
+                bounced = true;
+            }
+            // Bottom wall collision - check if BOTTOM EDGE hits bottom wall
+            if (bottomEdge >= containerHeight - 0.1 && this.vy > 0) {
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] BOTTOM WALL BOUNCE: bottomEdge=${bottomEdge.toFixed(2)}, containerHeight=${containerHeight.toFixed(2)}, y=${this.y.toFixed(2)}, vy=${this.vy.toFixed(2)}`);
+                }
+                this.y = maxY;
+                this.vy = -this.vy;
+                this.startVy = this.vy;
+                bounced = true;
+            }
+            // Top wall collision - check if TOP EDGE hits top wall
+            if (this.y <= 0.1 && this.vy < 0) {
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] TOP WALL BOUNCE: y=${this.y.toFixed(2)}, vy=${this.vy.toFixed(2)}`);
+                }
+                this.y = 0;
+                this.vy = -this.vy;
+                this.startVy = this.vy;
+                bounced = true;
+            }
+            
+            // Debug: Log if near boundary but didn't bounce (using correct edge detection)
+            if (DEBUG_MODE && this.id === myCardId && !bounced) {
+                const nearRight = rightEdge >= containerWidth - 5 && rightEdge <= containerWidth;
+                const nearLeft = this.x >= 0 && this.x <= 5;
+                const nearBottom = bottomEdge >= containerHeight - 5 && bottomEdge <= containerHeight;
+                const nearTop = this.y >= 0 && this.y <= 5;
+                
+                if (nearRight || nearLeft || nearBottom || nearTop) {
+                    console.log(`[DEBUG] Near boundary but no bounce: x=${this.x.toFixed(2)}, y=${this.y.toFixed(2)}, rightEdge=${rightEdge.toFixed(2)}, bottomEdge=${bottomEdge.toFixed(2)}, vx=${this.vx.toFixed(2)}, vy=${this.vy.toFixed(2)}, nearRight=${nearRight}, nearLeft=${nearLeft}, nearBottom=${nearBottom}, nearTop=${nearTop}`);
+                }
+            }
+
+            // Check corner hits (using edge positions)
+            if ((this.x <= 0 && this.y <= 0) ||
+                (rightEdge >= containerWidth && this.y <= 0) ||
+                (this.x <= 0 && bottomEdge >= containerHeight) ||
+                (rightEdge >= containerWidth && bottomEdge >= containerHeight)) {
+                hitCorner = true;
+            }
+
+            // Reset dead reckoning after bounce
+            if (bounced) {
+                this.startX = this.x;
+                this.startY = this.y;
+                this.startTime = now;
+                // Send position update to server after bounce
+                if (this.id === myCardId && ws && ws.readyState === WebSocket.OPEN) {
+                    sendPositionUpdate();
+                }
+            }
+
+            // Anti-stuck logic: if card is in corner and velocity is very small, give it a push
+            const isInCorner = (this.x <= 1 && this.y <= 1) ||
+                              (this.x >= maxX - 1 && this.y <= 1) ||
+                              (this.x <= 1 && this.y >= maxY - 1) ||
+                              (this.x >= maxX - 1 && this.y >= maxY - 1);
+            
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (isInCorner && speed < 0.5) {
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] ANTI-STUCK: Card in corner (${this.x.toFixed(2)}, ${this.y.toFixed(2)}) with low speed ${speed.toFixed(2)}, giving push`);
+                }
+                // Card is stuck in corner with low velocity - give it a random push
+                const angle = Math.random() * Math.PI * 2;
+                const pushSpeed = 3;
+                this.vx = Math.cos(angle) * pushSpeed;
+                this.vy = Math.sin(angle) * pushSpeed;
+                this.startVx = this.vx;
+                this.startVy = this.vy;
+                this.startX = this.x;
+                this.startY = this.y;
+                this.startTime = now;
+                
+                // Move card slightly away from corner
+                if (this.x <= 1 && this.y <= 1) {
+                    this.x = Math.max(5, this.x);
+                    this.y = Math.max(5, this.y);
+                } else if (this.x >= maxX - 1 && this.y <= 1) {
+                    this.x = Math.min(maxX - 5, this.x);
+                    this.y = Math.max(5, this.y);
+                } else if (this.x <= 1 && this.y >= maxY - 1) {
+                    this.x = Math.max(5, this.x);
+                    this.y = Math.min(maxY - 5, this.y);
+                } else if (this.x >= maxX - 1 && this.y >= maxY - 1) {
+                    this.x = Math.min(maxX - 5, this.x);
+                    this.y = Math.min(maxY - 5, this.y);
+                }
+                this.startX = this.x;
+                this.startY = this.y;
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] ANTI-STUCK: Moved to (${this.x.toFixed(2)}, ${this.y.toFixed(2)}), new velocity (${this.vx.toFixed(2)}, ${this.vy.toFixed(2)})`);
+                }
+            }
+
+            this.updatePosition();
+        }
+
+        applyCornerEffect() {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+
+            const img = document.createElement('img');
+            img.src = this.element.querySelector('img').src;
+
+            const nameTag = document.createElement('div');
+            nameTag.textContent = this.name;
+
+            modal.appendChild(img);
+            modal.appendChild(nameTag);
+            document.body.appendChild(modal);
+
+            const cheerSound = document.getElementById('cheerSound');
+            if (cheerSound) {
+                cheerSound.play().catch(e => console.log('Audio play failed:', e));
+            }
+            if (typeof confetti === 'function') {
+            confetti();
+            }
+
+            setTimeout(() => {
+                modal.remove();
+            }, 2000);
+        }
+
+        // Update velocity from server
+        updateVelocity(vx, vy, x, y, t0) {
+            const now = performance.now();
+            
+            if (DEBUG_MODE && this.id === myCardId) {
+                console.log(`[DEBUG] VECTOR_UPDATE: Card ${this.id} - Current: (${this.x.toFixed(2)}, ${this.y.toFixed(2)}), v=(${this.vx.toFixed(2)}, ${this.vy.toFixed(2)}) | Server: (${x.toFixed(2)}, ${y.toFixed(2)}), v=(${vx.toFixed(2)}, ${vy.toFixed(2)})`);
+            }
+            
+            // Always update velocity first (this is authoritative)
+            const oldVx = this.vx;
+            const oldVy = this.vy;
+            this.vx = vx;
+            this.vy = vy;
+            this.startVx = vx;
+            this.startVy = vy;
+            
+            if (DEBUG_MODE && this.id === myCardId && (oldVx !== vx || oldVy !== vy)) {
+                console.log(`[DEBUG] VELOCITY CHANGED: (${oldVx.toFixed(2)}, ${oldVy.toFixed(2)}) -> (${vx.toFixed(2)}, ${vy.toFixed(2)})`);
+            }
+            
+            // Calculate direction vectors
+            const dx = x - this.x;
+            const dy = y - this.y;
+            const error = Math.sqrt(dx * dx + dy * dy);
+            
+            // Only correct position if error is significant AND correction is forward
+            const velocityMag = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            let shouldCorrect = false;
+            let dotProduct = 0;
+            
+            if (error >= SYNC_ERROR_THRESHOLD && velocityMag > 0.1) {
+                // Normalize direction vectors
+                const errorDirX = dx / error;
+                const errorDirY = dy / error;
+                const velDirX = this.vx / velocityMag;
+                const velDirY = this.vy / velocityMag;
+                
+                // Dot product: positive means same direction (forward)
+                dotProduct = errorDirX * velDirX + errorDirY * velDirY;
+                
+                // Only correct if moving forward (not backward in time)
+                if (dotProduct > -0.3) {
+                    shouldCorrect = true;
+                }
+            } else if (error >= SYNC_ERROR_THRESHOLD && velocityMag <= 0.1) {
+                // If card is nearly stationary, allow correction
+                shouldCorrect = true;
+            }
+
+            if (shouldCorrect) {
+                // Clamp target position to bounds before correcting
+                const maxX = containerWidth - this.width;
+                const maxY = containerHeight - this.height;
+                let clampedX = Math.max(0, Math.min(x, maxX));
+                let clampedY = Math.max(0, Math.min(y, maxY));
+                
+                // Prevent corrections to exact corners (which can cause stuck state)
+                // Move slightly away from corners
+                if (clampedX <= 1 && clampedY <= 1) {
+                    clampedX = Math.max(5, clampedX);
+                    clampedY = Math.max(5, clampedY);
+                } else if (clampedX >= maxX - 1 && clampedY <= 1) {
+                    clampedX = Math.min(maxX - 5, clampedX);
+                    clampedY = Math.max(5, clampedY);
+                } else if (clampedX <= 1 && clampedY >= maxY - 1) {
+                    clampedX = Math.max(5, clampedX);
+                    clampedY = Math.min(maxY - 5, clampedY);
+                } else if (clampedX >= maxX - 1 && clampedY >= maxY - 1) {
+                    clampedX = Math.min(maxX - 5, clampedX);
+                    clampedY = Math.min(maxY - 5, clampedY);
+                }
+                
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] VECTOR_UPDATE CORRECTION: error=${error.toFixed(2)}px, dotProduct=${dotProduct.toFixed(2)}, correcting to (${clampedX.toFixed(2)}, ${clampedY.toFixed(2)})`);
+                }
+                
+                // Large error - smooth interpolation to correct position
+                if (!this.correcting) {
+                    this.correcting = true;
+                    this.correctionStartTime = now;
+                    this.startX = this.x;
+                    this.startY = this.y;
+                }
+                this.targetX = clampedX;
+                this.targetY = clampedY;
+            } else if (DEBUG_MODE && this.id === myCardId && error >= SYNC_ERROR_THRESHOLD) {
+                console.log(`[DEBUG] VECTOR_UPDATE CORRECTION SKIPPED: error=${error.toFixed(2)}px, dotProduct=${dotProduct.toFixed(2)}, velocityMag=${velocityMag.toFixed(2)}`);
+            }
+            // For small errors or backward corrections, don't correct position - just update velocity
+            
+            // Reset dead reckoning from current position with new velocity
+            this.startX = this.x;
+            this.startY = this.y;
+            this.startTime = now;
+        }
+
+        // Sync correction from server (periodic sync)
+        syncCorrection(serverX, serverY, serverVx, serverVy) {
+            if (DEBUG_MODE && this.id === myCardId) {
+                console.log(`[DEBUG] GLOBAL_SYNC: Card ${this.id} - Current: (${this.x.toFixed(2)}, ${this.y.toFixed(2)}), v=(${this.vx.toFixed(2)}, ${this.vy.toFixed(2)}) | Server: (${serverX.toFixed(2)}, ${serverY.toFixed(2)}), v=(${serverVx.toFixed(2)}, ${serverVy.toFixed(2)})`);
+            }
+            
+            // Always update velocity from server (authoritative)
+            const oldVx = this.vx;
+            const oldVy = this.vy;
+            this.vx = serverVx;
+            this.vy = serverVy;
+            this.startVx = serverVx;
+            this.startVy = serverVy;
+            
+            if (DEBUG_MODE && this.id === myCardId && (oldVx !== serverVx || oldVy !== serverVy)) {
+                console.log(`[DEBUG] SYNC VELOCITY CHANGED: (${oldVx.toFixed(2)}, ${oldVy.toFixed(2)}) -> (${serverVx.toFixed(2)}, ${serverVy.toFixed(2)})`);
+            }
+            
+            // Calculate direction vectors
+            const dx = serverX - this.x;
+            const dy = serverY - this.y;
+            const error = Math.sqrt(dx * dx + dy * dy);
+            
+            // Only correct if error is significant AND correction moves forward
+            // Check if correction is in the same direction as velocity (forward movement)
+            const velocityMag = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            let shouldCorrect = false;
+            let dotProduct = 0;
+            
+            if (error >= SYNC_ERROR_THRESHOLD && velocityMag > 0.1) {
+                // Normalize direction vectors
+                const errorDirX = dx / error;
+                const errorDirY = dy / error;
+                const velDirX = this.vx / velocityMag;
+                const velDirY = this.vy / velocityMag;
+                
+                // Dot product: positive means same direction (forward), negative means backward
+                dotProduct = errorDirX * velDirX + errorDirY * velDirY;
+                
+                // Only correct if moving forward (dot product > 0) or if velocity is very small
+                // This prevents "going back in time" corrections
+                if (dotProduct > -0.3) { // Allow slight backward corrections but not major ones
+                    shouldCorrect = true;
+                }
+            } else if (error >= SYNC_ERROR_THRESHOLD && velocityMag <= 0.1) {
+                // If card is nearly stationary, allow correction
+                shouldCorrect = true;
+            }
+            
+            if (shouldCorrect) {
+                // Clamp target position to bounds before correcting
+                const maxX = containerWidth - this.width;
+                const maxY = containerHeight - this.height;
+                let clampedX = Math.max(0, Math.min(serverX, maxX));
+                let clampedY = Math.max(0, Math.min(serverY, maxY));
+                
+                // Prevent corrections to exact corners (which can cause stuck state)
+                // Move slightly away from corners
+                if (clampedX <= 1 && clampedY <= 1) {
+                    clampedX = Math.max(5, clampedX);
+                    clampedY = Math.max(5, clampedY);
+                } else if (clampedX >= maxX - 1 && clampedY <= 1) {
+                    clampedX = Math.min(maxX - 5, clampedX);
+                    clampedY = Math.max(5, clampedY);
+                } else if (clampedX <= 1 && clampedY >= maxY - 1) {
+                    clampedX = Math.max(5, clampedX);
+                    clampedY = Math.min(maxY - 5, clampedY);
+                } else if (clampedX >= maxX - 1 && clampedY >= maxY - 1) {
+                    clampedX = Math.min(maxX - 5, clampedX);
+                    clampedY = Math.min(maxY - 5, clampedY);
+                }
+                
+                if (DEBUG_MODE && this.id === myCardId) {
+                    console.log(`[DEBUG] SYNC CORRECTION: error=${error.toFixed(2)}px, dotProduct=${dotProduct.toFixed(2)}, correcting to (${clampedX.toFixed(2)}, ${clampedY.toFixed(2)})`);
+                }
+                
+                // Large error - use smooth interpolation
+                if (!this.correcting) {
+                    this.correcting = true;
+                    this.correctionStartTime = performance.now();
+                    this.startX = this.x;
+                    this.startY = this.y;
+                }
+                this.targetX = clampedX;
+                this.targetY = clampedY;
+            } else if (DEBUG_MODE && this.id === myCardId && error >= SYNC_ERROR_THRESHOLD) {
+                console.log(`[DEBUG] SYNC CORRECTION SKIPPED: error=${error.toFixed(2)}px, dotProduct=${dotProduct.toFixed(2)}, velocityMag=${velocityMag.toFixed(2)}`);
+            }
+            // For small errors or backward corrections, ignore position - let dead reckoning continue
+            
+            // Reset dead reckoning from current position with new velocity
+            this.startX = this.x;
+            this.startY = this.y;
+            this.startTime = performance.now();
+        }
+
+        updatePosition() {
+            this.element.style.transform = `translate3d(${this.x}px, ${this.y}px, 0)`;
+        }
+
+        remove() {
+            if (this.element && this.element.parentNode) {
+                this.element.parentNode.removeChild(this.element);
+            }
+        }
+    }
+
+    // Linear interpolation
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    // Connect to WebSocket server
+    function connect() {
+        if (!token) {
+            token = getOrCreateUUID();
+        }
+        
+        // Use same protocol as page, but default to ws://localhost:8080 for development/file usage
+        function getWsUrl() {
+            const isLocal =
+                window.location.protocol === 'file:' ||
+                window.location.hostname === '' ||
+                window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1';
+            if (isLocal) return 'ws://localhost:8080';
+
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.hostname;
+            const port = window.location.port || '8080';
+            return `${wsProtocol}//${host}:${port}`;
+        }
+
+        const wsUrl = getWsUrl();
+
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            updateConnectionStatus(true);
+            
+            // Send handshake with token
+            ws.send(JSON.stringify({
+                type: 'HANDSHAKE',
+                token: token || 'anonymous',
+                containerWidth: window.innerWidth,
+                containerHeight: window.innerHeight
+            }));
+            
+            // Ensure server marks us active after reconnect/navigation
+            ws.send(JSON.stringify({ type: 'TAB_ACTIVE' }));
+            ws.send(JSON.stringify({ type: 'REQUEST_FULL_STATE' }));
+            
+            // Reset position update timer
+            lastPositionUpdate = Date.now();
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            updateConnectionStatus(false);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+            updateConnectionStatus(false);
+            // Attempt reconnect after 2 seconds
+            setTimeout(connect, 2000);
+        };
+    }
+
+    // Handle server messages
+    function handleServerMessage(data) {
+        switch (data.type) {
+            case 'INIT_STATE':
+                // Clear existing cards first to prevent duplication
+                cards.forEach(card => card.remove());
+                cards.clear();
+                
+                myCardId = data.cardId;
+                containerWidth = data.containerWidth || window.innerWidth;
+                containerHeight = data.containerHeight || window.innerHeight;
+                
+                // Create all cards
+                data.cards.forEach(cardData => {
+                    const imageSrc = resolveImageUrl(cardData.imageSrc);
+                    const card = new Card(
+                        cardData.id,
+                        cardData.name,
+                        imageSrc,
+                        cardData.x,
+                        cardData.y,
+                        cardData.vx,
+                        cardData.vy,
+                        cardData.roundNumber,
+                        cardData.roundStartTime,
+                        cardData.cornerHits
+                    );
+                    // Set inactive state if provided (for all cards, including own)
+                    if (cardData.inactive) {
+                        card.inactive = true;
+                        card.vx = 0;
+                        card.vy = 0;
+                        card.startVx = 0;
+                        card.startVy = 0;
+                        card.element.classList.add('inactive');
+                    }
+                    cards.set(cardData.id, card);
+                    
+                    if (cardData.id === myCardId) {
+                        roundNumber = cardData.roundNumber;
+                        roundStartTime = cardData.roundStartTime;
+                        startRoundTimer();
+                        // Send initial position update after receiving state
+                        setTimeout(() => sendPositionUpdate(), 100);
+                        ensureMyCardActive();
+                    }
+                });
+                break;
+
+            case 'VECTOR_UPDATE':
+                const card = cards.get(data.id);
+                if (card) {
+                    card.updateVelocity(data.vx, data.vy, data.x, data.y, data.t0);
+                    if (data.id === myCardId) {
+                        // Update round info
+                        roundNumber = (roundNumber || 0) + 1;
+                        roundStartTime = data.t0;
+                        startRoundTimer();
+                    }
+                }
+                break;
+
+            case 'GLOBAL_SYNC':
+                data.cards.forEach(cardData => {
+                    const card = cards.get(cardData.id);
+                    if (card) {
+                        card.syncCorrection(cardData.x, cardData.y, cardData.vx, cardData.vy);
+                        card.roundNumber = cardData.roundNumber;
+                        card.roundStartTime = cardData.roundStartTime;
+                        if (cardData.cornerHits !== undefined) {
+                            card.cornerHits = cardData.cornerHits;
+                            if (card.cornerHitCounter) {
+                                card.cornerHitCounter.textContent = `Corners: ${card.cornerHits}`;
+                            }
+                        }
+                        
+                        // Update my round info if it's my card
+                        if (cardData.id === myCardId) {
+                            roundNumber = cardData.roundNumber;
+                            roundStartTime = cardData.roundStartTime;
+                        }
+                    }
+                });
+                break;
+
+            case 'CARD_ADDED':
+                if (!cards.has(data.id)) {
+                    const imageSrc = resolveImageUrl(data.imageSrc);
+                    const newCard = new Card(
+                        data.id,
+                        data.name,
+                        imageSrc,
+                        data.x,
+                        data.y,
+                        data.vx,
+                        data.vy,
+                        data.roundNumber,
+                        data.roundStartTime,
+                        data.cornerHits
+                    );
+                    if (data.inactive) {
+                        newCard.inactive = true;
+                        newCard.vx = 0;
+                        newCard.vy = 0;
+                        newCard.startVx = 0;
+                        newCard.startVy = 0;
+                        newCard.element.classList.add('inactive');
+                    }
+                    cards.set(data.id, newCard);
+                }
+                break;
+
+            case 'CARD_REMOVED':
+                const removedCard = cards.get(data.id);
+                if (removedCard) {
+                    removedCard.remove();
+                    cards.delete(data.id);
+                }
+                break;
+
+            case 'CARD_UPDATED':
+                const updatedCard = cards.get(data.id);
+                if (updatedCard) {
+                    if (data.name) {
+                        updatedCard.name = data.name;
+                        updatedCard.element.querySelector('h3').textContent = data.name;
+                    }
+                    if (data.imageSrc) {
+                        const imageSrc = resolveImageUrl(data.imageSrc);
+                        updatedCard.imageSrc = imageSrc;
+                        updatedCard.element.querySelector('img').src = imageSrc;
+                    }
+                }
+                break;
+
+            case 'CARD_INACTIVE':
+                const inactiveCard = cards.get(data.id);
+                if (inactiveCard) {
+                    inactiveCard.inactive = true;
+                    inactiveCard.vx = 0;
+                    inactiveCard.vy = 0;
+                    inactiveCard.startVx = 0;
+                    inactiveCard.startVy = 0;
+                    inactiveCard.element.classList.add('inactive');
+                }
+                break;
+
+            case 'CARD_ACTIVE':
+                const activeCard = cards.get(data.id);
+                if (activeCard) {
+                    activeCard.inactive = false;
+                    activeCard.element.classList.remove('inactive');
+                }
+                break;
+
+            case 'CORNER_HIT':
+                const cornerCard = cards.get(data.id);
+                if (cornerCard) {
+                    cornerCard.cornerHits = data.cornerHits ?? cornerCard.cornerHits;
+                    if (cornerCard.cornerHitCounter) {
+                        cornerCard.cornerHitCounter.textContent = `Corners: ${cornerCard.cornerHits}`;
+                    }
+                    if (cornerCard.id === myCardId) {
+                        cornerCard.applyCornerEffect();
+                    }
+                }
+                break;
+
+            case 'BOUNDS_UPDATE':
+                containerWidth = data.containerWidth || containerWidth;
+                containerHeight = data.containerHeight || containerHeight;
+                if (Array.isArray(data.cards)) {
+                    data.cards.forEach(cardData => {
+                        const card = cards.get(cardData.id);
+                        if (card) {
+                            card.syncCorrection(cardData.x, cardData.y, cardData.vx, cardData.vy);
+                            card.roundNumber = cardData.roundNumber;
+                            card.roundStartTime = cardData.roundStartTime;
+                            card.cornerHits = cardData.cornerHits ?? card.cornerHits;
+                            if (card.cornerHitCounter) {
+                                card.cornerHitCounter.textContent = `Corners: ${card.cornerHits}`;
+                            }
+                        }
+                    });
+                }
+                break;
+
+            case 'PONG':
+                // Keep-alive response
+                break;
+        }
+    }
+
+    // CPS Round Timer
+    function startRoundTimer() {
+        if (roundTimerInterval) {
+            clearInterval(roundTimerInterval);
+        }
+
+        roundClicks = 0;
+        updateCPSDisplay();
+        let lastReportedRound = roundNumber;
+
+        roundTimerInterval = setInterval(() => {
+            const now = Date.now();
+            const elapsed = now - roundStartTime;
+            const remaining = Math.max(0, (ROUND_DURATION - elapsed) / 1000);
+            
+            roundTimer.textContent = `Round: ${remaining.toFixed(1)}s`;
+
+            // Send CPS report at end of round (only once per round)
+            if (elapsed >= ROUND_DURATION && lastReportedRound === roundNumber) {
+                sendCPSReport();
+                lastReportedRound = roundNumber;
+            }
+        }, 100);
+    }
+
+    function sendCPSReport() {
+        if (ws && ws.readyState === WebSocket.OPEN && myCardId) {
+            ws.send(JSON.stringify({
+                type: 'CPS_REPORT',
+                clicks: roundClicks,
+                roundNumber: roundNumber
+            }));
+            console.log(`Sent CPS report: ${roundClicks} clicks`);
+        }
+    }
+
+    function updateCPSDisplay() {
+        cpsCounter.textContent = `Clicks: ${roundClicks}`;
+    }
+
+    function updateConnectionStatus(connected) {
+        connectionStatus.textContent = connected ? 'Connected' : 'Disconnected';
+        connectionStatus.className = 'connection-status ' + (connected ? 'connected' : 'disconnected');
+    }
+
+    // Clear inactive state locally and notify server
+    function ensureMyCardActive() {
+        if (!myCardId) return;
+        const myCard = cards.get(myCardId);
+        if (myCard && myCard.inactive) {
+            myCard.inactive = false;
+            myCard.element.classList.remove('inactive');
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'TAB_ACTIVE' }));
+        }
+    }
+
+    // Main animation loop (60 FPS)
+    function animate(currentTime) {
+        const deltaTime = (currentTime - lastFrameTime) / 1000;
+        lastFrameTime = currentTime;
+
+        // Update all cards with dead reckoning
+        cards.forEach(card => {
+            card.update(deltaTime);
+        });
+
+        // Animate background
+        gradientAngle = (gradientAngle + 0.1) % 360;
+        hue1 = (hue1 + 0.05) % 360;
+        hue2 = (hue2 + 0.05) % 360;
+        document.body.style.background = `linear-gradient(${gradientAngle}deg, hsla(${hue1}, 70%, 60%, 1) 0%, hsla(${hue2}, 70%, 60%, 1) 100%)`;
+
+        animationFrame = requestAnimationFrame(animate);
+    }
+
+    // Prevent zoom interactions (ctrl+wheel/pinch or ctrl +/-)
+    window.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && ['+', '-', '=', '0'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
+    // Tab focus handling
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            wasTabActive = false;
+            // Notify server that this client is inactive
+            if (ws && ws.readyState === WebSocket.OPEN && myCardId) {
+                ws.send(JSON.stringify({ type: 'TAB_INACTIVE' }));
+            }
+        } else {
+            wasTabActive = true;
+            // Notify server that this client is active again
+            if (ws && ws.readyState === WebSocket.OPEN && myCardId) {
+                ws.send(JSON.stringify({ type: 'TAB_ACTIVE' }));
+                // Request full state on focus
+                ws.send(JSON.stringify({ type: 'REQUEST_FULL_STATE' }));
+            }
+            ensureMyCardActive();
+        }
+    });
+
+    // Window resize
+    window.addEventListener('resize', () => {
+        containerWidth = Math.max(window.innerWidth, CARD_WIDTH + 40);
+        containerHeight = Math.max(window.innerHeight, CARD_HEIGHT + 40);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            sendContainerUpdate();
+        }
+    });
+
+    // Initialize background animation variables
+    let gradientAngle = 0;
+    let hue1 = 0;
+    let hue2 = 180;
+    
+    // Start animation loop (will connect when authenticated)
+    lastFrameTime = performance.now();
+    animate(lastFrameTime);
+
+    // Send position updates to server periodically
+    let lastPositionUpdate = 0;
+    const POSITION_UPDATE_INTERVAL = 1000; // Send position every 1 second
+    const CARD_WIDTH = 200;
+    const CARD_HEIGHT = 260;
+    
+    function sendPositionUpdate() {
+        if (ws && ws.readyState === WebSocket.OPEN && myCardId) {
+            const myCard = cards.get(myCardId);
+            if (myCard) {
+                if (DEBUG_MODE) {
+                    console.log(`[DEBUG] Sending POSITION_UPDATE: (${myCard.x.toFixed(2)}, ${myCard.y.toFixed(2)}), v=(${myCard.vx.toFixed(2)}, ${myCard.vy.toFixed(2)})`);
+                }
+                ws.send(JSON.stringify({
+                    type: 'POSITION_UPDATE',
+                    x: myCard.x,
+                    y: myCard.y
+                }));
+            }
+        }
+    }
+
+    const sendContainerUpdate = debounce(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'CONTAINER_UPDATE',
+                width: window.innerWidth,
+                height: window.innerHeight
+            }));
+        }
+    }, 200);
+
+    // Send position updates periodically
+    setInterval(() => {
+        const now = Date.now();
+        if (now - lastPositionUpdate >= POSITION_UPDATE_INTERVAL) {
+            sendPositionUpdate();
+            lastPositionUpdate = now;
+        }
+    }, POSITION_UPDATE_INTERVAL);
+
+    // Ping server every 30 seconds
+    setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'PING' }));
+        }
+    }, 30000);
+</script>
+
+</body>
+</html>
