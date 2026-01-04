@@ -141,16 +141,10 @@
         }
 
         // Determine API base URL
+        const API_BASE = 'http://129.159.148.255';
+
         function getApiBaseUrl() {
-            if (
-                window.location.protocol === 'file:' ||
-                window.location.hostname === '' ||
-                window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1'
-            ) {
-                return 'http://localhost:8080';
-            }
-            return window.location.origin;
+            return API_BASE;
         }
 
         function resolveImageUrl(src) {

@@ -295,6 +295,9 @@
     const roundTimer = document.getElementById('roundTimer');
     const connectionStatus = document.getElementById('connectionStatus');
 
+    // Backend endpoint base
+    const API_BASE = 'http://129.159.148.255';
+
     // Generate or retrieve UUID
     function getOrCreateUUID() {
         let uuid = localStorage.getItem('gameToken');
@@ -324,15 +327,7 @@
 
     // Resolve API base URL based on how the page is opened
     function getApiBaseUrl() {
-        if (
-            window.location.protocol === 'file:' ||
-            window.location.hostname === '' ||
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1'
-        ) {
-            return 'http://localhost:8080';
-        }
-        return window.location.origin;
+        return API_BASE;
     }
 
     // Registration/Login functions
@@ -958,17 +953,9 @@
         
         // Use same protocol as page, but default to ws://localhost:8080 for development/file usage
         function getWsUrl() {
-            const isLocal =
-                window.location.protocol === 'file:' ||
-                window.location.hostname === '' ||
-                window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1';
-            if (isLocal) return 'ws://localhost:8080';
-
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.hostname;
-            const port = window.location.port || '8080';
-            return `${wsProtocol}//${host}:${port}`;
+            const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
+            const host = API_BASE.replace(/^https?:\/\//, '');
+            return `${wsProtocol}//${host}:8080`;
         }
 
         const wsUrl = getWsUrl();
