@@ -294,14 +294,8 @@
     const roundTimer = document.getElementById('roundTimer');
     const connectionStatus = document.getElementById('connectionStatus');
 
-    // Backend endpoint base (defaults to deployed instance IP; adjust host/port below if needed)
-    const BACKEND_HOST = '129.159.148.255';
-    const BACKEND_PORT = 8080;
-    const API_BASE = (() => {
-        // Always use the known backend IP unless you manually change BACKEND_HOST/BACKEND_PORT
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        return `${protocol}//${BACKEND_HOST}:${BACKEND_PORT}`;
-    })();
+    // Backend endpoint base (hard-coded to deployed instance)
+    const API_BASE = 'http://129.159.148.255:8080';
 
     // Generate or retrieve UUID
     function getOrCreateUUID() {
