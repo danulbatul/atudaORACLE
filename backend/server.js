@@ -171,12 +171,21 @@ app.get('/uploads/:objectName', async (req, res) => {
     try {
         const client = await getObjectStorageClient();
         const namespaceName = await getNamespaceName();
-        const objectName = req.params.objectName;
-        const response = await client.getObject({
-            namespaceName,
-            bucketName: USER_IMAGES_BUCKET,
-            objectName
-        });
+        const rawName = req.params.objectName;
+        let response;
+        try {
+            response = await client.getObject({
+                namespaceName,
+                bucketName: USER_IMAGES_BUCKET,
+                objectName: `uploads/${rawName}`
+            });
+        } catch (err) {
+            response = await client.getObject({
+                namespaceName,
+                bucketName: USER_IMAGES_BUCKET,
+                objectName: rawName
+            });
+        }
         if (response.contentType) {
             res.setHeader('Content-Type', response.contentType);
         }
@@ -247,7 +256,8 @@ app.post('/api/register', upload.single('image'), async (req, res) => {
     let imagePath = null;
     if (req.file) {
         try {
-            await uploadImageToBucket(req.file.path, req.file.filename, req.file.mimetype);
+            const objectKey = `uploads/${req.file.filename}`;
+            await uploadImageToBucket(req.file.path, objectKey, req.file.mimetype);
             fs.unlink(req.file.path, () => {});
             imagePath = `/uploads/${req.file.filename}`;
         } catch (err) {
@@ -350,7 +360,8 @@ app.post('/api/update-image', upload.single('image'), async (req, res) => {
 
     let imagePath;
     try {
-        await uploadImageToBucket(req.file.path, req.file.filename, req.file.mimetype);
+        const objectKey = `uploads/${req.file.filename}`;
+        await uploadImageToBucket(req.file.path, objectKey, req.file.mimetype);
         fs.unlink(req.file.path, () => {});
         imagePath = `/uploads/${req.file.filename}`;
     } catch (err) {
