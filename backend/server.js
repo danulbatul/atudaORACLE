@@ -164,7 +164,8 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-app.use(express.static(__dirname)); // Serve static files
+const frontendDir = path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendDir)); // Serve frontend over HTTP
 // Serve uploaded images from Object Storage
 app.get('/uploads/:objectName', async (req, res) => {
     try {
