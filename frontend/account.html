@@ -140,8 +140,8 @@
             window.location.href = '/index.html';
         }
 
-        // Determine API base URL (hard-coded to deployed instance)
-        const API_BASE = 'http://129.159.148.255:8080';
+        // Determine API base URL (use same-origin proxy)
+        const API_BASE = '';
         window.API_BASE = API_BASE; // expose for quick debugging in DevTools
 
         function getApiBaseUrl() {

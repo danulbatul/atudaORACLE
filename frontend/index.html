@@ -294,8 +294,8 @@
     const roundTimer = document.getElementById('roundTimer');
     const connectionStatus = document.getElementById('connectionStatus');
 
-    // Backend endpoint base (hard-coded to deployed instance)
-    const API_BASE = 'http://129.159.148.255:8080';
+    // Backend endpoint base (use same-origin proxy)
+    const API_BASE = '';
     window.API_BASE = API_BASE; // expose for quick debugging in DevTools
 
     // Generate or retrieve UUID
