@@ -145,7 +145,7 @@
         window.API_BASE = API_BASE; // expose for quick debugging in DevTools
 
         function getApiBaseUrl() {
-            return API_BASE;
+            return API_BASE || window.location.origin;
         }
 
         function resolveImageUrl(src) {

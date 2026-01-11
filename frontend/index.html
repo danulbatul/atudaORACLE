@@ -327,7 +327,7 @@
 
     // Resolve API base URL based on how the page is opened
     function getApiBaseUrl() {
-        return API_BASE;
+        return API_BASE || window.location.origin;
     }
 
     // Registration/Login functions
