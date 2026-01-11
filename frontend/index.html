@@ -953,10 +953,16 @@
         
         // Use same protocol as page, but default to ws://localhost:8080 for development/file usage
         function getWsUrl() {
-            const apiUrl = new URL(getApiBaseUrl());
-            const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-            const port = apiUrl.port ? `:${apiUrl.port}` : '';
-            return `${wsProtocol}//${apiUrl.hostname}${port}`;
+            const base = getApiBaseUrl();
+            try {
+                const apiUrl = new URL(base);
+                const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+                const port = apiUrl.port ? `:${apiUrl.port}` : '';
+                return `${wsProtocol}//${apiUrl.hostname}${port}`;
+            } catch (err) {
+                // Fallback for file:// or missing base
+                return 'ws://localhost:8080';
+            }
         }
 
         const wsUrl = getWsUrl();
