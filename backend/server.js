@@ -5,8 +5,50 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const common = require('oci-common');
+const objectstorage = require('oci-objectstorage');
 
 const PORT = process.env.PORT || 8080;
+const USER_IMAGES_BUCKET = process.env.USER_IMAGES_BUCKET || 'GameStateDataBucket';
+const OCI_REGION = process.env.OCI_REGION || process.env.OCI_CLI_REGION || 'il-jerusalem-1';
+const OCI_NAMESPACE = process.env.OCI_NAMESPACE || '';
+
+let objectStorageClient;
+let cachedNamespace = OCI_NAMESPACE;
+
+async function getObjectStorageClient() {
+    if (objectStorageClient) {
+        return objectStorageClient;
+    }
+    const provider = await new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
+    const client = new objectstorage.ObjectStorageClient({ authenticationDetailsProvider: provider });
+    client.region = common.Region.fromRegionId(OCI_REGION);
+    objectStorageClient = client;
+    return client;
+}
+
+async function getNamespaceName() {
+    if (cachedNamespace) {
+        return cachedNamespace;
+    }
+    const client = await getObjectStorageClient();
+    const response = await client.getNamespace({});
+    cachedNamespace = response.value;
+    return cachedNamespace;
+}
+
+async function uploadImageToBucket(localPath, objectName, contentType) {
+    const client = await getObjectStorageClient();
+    const namespaceName = await getNamespaceName();
+    const stream = fs.createReadStream(localPath);
+    await client.putObject({
+        namespaceName,
+        bucketName: USER_IMAGES_BUCKET,
+        objectName,
+        putObjectBody: stream,
+        contentType
+    });
+}
 
 // Game constants
 const ROUND_DURATION = 10000; // 10 seconds
@@ -123,7 +165,26 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.static(__dirname)); // Serve static files
-app.use('/uploads', express.static(uploadsDir)); // Serve uploaded images
+// Serve uploaded images from Object Storage
+app.get('/uploads/:objectName', async (req, res) => {
+    try {
+        const client = await getObjectStorageClient();
+        const namespaceName = await getNamespaceName();
+        const objectName = req.params.objectName;
+        const response = await client.getObject({
+            namespaceName,
+            bucketName: USER_IMAGES_BUCKET,
+            objectName
+        });
+        if (response.contentType) {
+            res.setHeader('Content-Type', response.contentType);
+        }
+        response.value.pipe(res);
+    } catch (err) {
+        console.error('Failed to fetch image from bucket:', err);
+        res.status(404).send('Not found');
+    }
+});
 
 // Create HTTP server
 const server = require('http').createServer(app);
@@ -175,14 +236,24 @@ class Session {
 // API Routes
 
 // Register new user
-app.post('/api/register', upload.single('image'), (req, res) => {
+app.post('/api/register', upload.single('image'), async (req, res) => {
     const { username, password } = req.body;
     
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password required' });
     }
 
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+    let imagePath = null;
+    if (req.file) {
+        try {
+            await uploadImageToBucket(req.file.path, req.file.filename, req.file.mimetype);
+            fs.unlink(req.file.path, () => {});
+            imagePath = `/uploads/${req.file.filename}`;
+        } catch (err) {
+            console.error('Failed to upload image:', err);
+            return res.status(500).json({ error: 'Image upload failed' });
+        }
+    }
     const token = generateUUID();
     const hashedPassword = bcrypt.hashSync(password, 10);
 
@@ -267,7 +338,7 @@ app.get('/api/user', (req, res) => {
 });
 
 // Update user image
-app.post('/api/update-image', upload.single('image'), (req, res) => {
+app.post('/api/update-image', upload.single('image'), async (req, res) => {
     const token = req.body.token;
     if (!token) {
         return res.status(400).json({ error: 'Token required' });
@@ -276,7 +347,15 @@ app.post('/api/update-image', upload.single('image'), (req, res) => {
         return res.status(400).json({ error: 'Image file required' });
     }
 
-    const imagePath = `/uploads/${req.file.filename}`;
+    let imagePath;
+    try {
+        await uploadImageToBucket(req.file.path, req.file.filename, req.file.mimetype);
+        fs.unlink(req.file.path, () => {});
+        imagePath = `/uploads/${req.file.filename}`;
+    } catch (err) {
+        console.error('Failed to upload image:', err);
+        return res.status(500).json({ error: 'Image upload failed' });
+    }
 
     // Get old image path to delete it
     db.get('SELECT image_path FROM users WHERE token = ?', [token], (err, row) => {
